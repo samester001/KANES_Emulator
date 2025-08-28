@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NES Emulator Demo — Handheld Style</title>
+    <style>
+      :root {
+        --bg: #000;
+        --panel: #111;
+        --btn: #222;
+        --accent: #28a745;
+        --btn-shadow: rgba(0, 0, 0, 0.5);
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: #fff;
+        font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+      #container {
+        max-width: 100vw;
+        width: 100vw;
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        background: var(--panel);
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      h1 {
+        margin: 6px 0 12px;
+        text-align: center;
+        font-size: clamp(1.2rem, 2vw, 2rem);
+      }
+      #status {
+        width: 100%;
+        background: var(--panel);
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 13px;
+        color: #ddd;
+      }
+
+      /* Handheld layout */
+      #handheld {
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 0;
+        width: 100vw;
+        flex-wrap: nowrap;
+        margin: 0;
+        padding: 0 0;
+        height: 65vh;
+        box-sizing: border-box;
+      }
+      #screen {
+        background: #111;
+        border: 4px solid #333;
+        border-radius: 12px;
+        flex: 0 1 700px;
+        box-sizing: border-box;
+        position: relative;
+        max-width: 70vw;
+        width: min(70vw, 700px);
+        aspect-ratio: 256 / 240;
+        overflow: hidden;
+        box-shadow: 0 0 15px #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 320px;
+        height: 100%;
+      }
+      #screen canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: 6px;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        background: #111;
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      /* Controls */
+      #dpad,
+      #dpad,
+      #dpad {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+        min-width: 120px;
+        width: 120px;
+        height: 100%;
+        justify-content: center;
+        padding-left: 32px;
+      }
+      #abxy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+        min-width: 120px;
+        width: 120px;
+        height: 100%;
+        justify-content: center;
+      }
+      #dpad .row {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+
+      .btn {
+        width: clamp(48px, 7vw, 64px);
+        height: clamp(48px, 7vw, 64px);
+        border-radius: 50%;
+        background: var(--btn);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        user-select: none;
+        cursor: pointer;
+        font-size: clamp(16px, 2vw, 18px);
+        color: #fff;
+        box-shadow: 0 4px 8px var(--btn-shadow),
+          inset 0 2px 4px rgba(255, 255, 255, 0.1);
+        transition: transform 0.1s;
+        touch-action: manipulation;
+      }
+      .btn:active {
+        transform: scale(0.9);
+        background: #555;
+      }
+
+      #centerControls {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        margin-top: 8px;
+        flex-wrap: nowrap;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 24px;
+      }
+      #centerControls .btn {
+        width: clamp(70px, 12vw, 90px);
+        height: clamp(36px, 5vw, 40px);
+        border-radius: 20px;
+        font-size: clamp(12px, 2vw, 14px);
+      }
+
+      #romRow {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        margin: 10px 0;
+      }
+      #dropZone {
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: #0b0b0b;
+        border: 1px dashed #333;
+        color: #aaa;
+        text-align: center;
+      }
+      .muted {
+        color: #aaa;
+        font-size: 13px;
+        text-align: center;
+      }
+      a.link {
+        color: var(--accent);
+      }
+
+      @media (max-width: 900px) {
+        #container {
+          max-width: 100vw;
+          height: 100vh;
+          padding: 0;
+        }
+        #handheld {
+          flex-direction: column;
+          gap: 8px;
+          padding: 0;
+          height: 60vh;
+          width: 100vw;
+        }
+        #screen {
+          width: min(98vw, 480px);
+          max-width: 98vw;
+          min-width: 120px;
+          height: 40vh;
+        }
+        #dpad,
+        #abxy {
+          min-width: 60px;
+          width: 60px;
+          height: 40px;
+        }
+        #centerControls {
+          position: static;
+          margin-top: 8px;
+          margin-bottom: 8px;
+        }
+      }
+      @media (max-width: 600px) {
+        .btn {
+          width: clamp(32px, 12vw, 44px);
+          height: clamp(32px, 12vw, 44px);
+          font-size: clamp(12px, 4vw, 14px);
+        }
+        #centerControls .btn {
+          width: clamp(40px, 20vw, 60px);
+          height: clamp(24px, 8vw, 32px);
+          font-size: clamp(9px, 3vw, 11px);
+        }
+        #screen {
+          width: 98vw;
+          min-width: 100px;
+          height: 30vh;
+        }
+      }
+      @media (max-width: 400px) {
+        h1 {
+          font-size: 1rem;
+        }
+        #screen {
+          min-width: 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h1>KANES Emulator - Handheld Style</h1>
+      <!-- Traffic light: horizontal, no label -->
+      <div
+        id="trafficLight"
+        style="
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 12px;
+        "
+      >
+        <div
+          style="
+            width: 64px;
+            height: 22px;
+            background: #222;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 10px;
+          "
+        >
+          <div
+            id="light-red"
+            style="
+              width: 16px;
+              height: 16px;
+              border-radius: 50%;
+              background: #400;
+              box-shadow: 0 0 4px #f00 inset;
+            "
+          ></div>
+          <div
+            id="light-yellow"
+            style="
+              width: 16px;
+              height: 16px;
+              border-radius: 50%;
+              background: #443;
+              box-shadow: 0 0 4px #ff0 inset;
+            "
+          ></div>
+          <div
+            id="light-green"
+            style="
+              width: 16px;
+              height: 16px;
+              border-radius: 50%;
+              background: #040;
+              box-shadow: 0 0 4px #0f0 inset;
+            "
+          ></div>
+        </div>
+      </div>
+
+      <div id="handheld">
+        <!-- Left: D-Pad -->
+        <div id="dpad">
+          <div class="btn" id="btnUp" aria-label="Up">▲</div>
+          <div class="row">
+            <div class="btn" id="btnLeft" aria-label="Left">◀</div>
+            <div class="btn" id="btnRight" aria-label="Right">▶</div>
+          </div>
+          <div class="btn" id="btnDown" aria-label="Down">▼</div>
+        </div>
+
+        <!-- Screen -->
+        <div id="screen">
+          <canvas id="canvas" width="256" height="240"></canvas>
+          <!-- Add ROM UI overlay inside #screen -->
+          <div
+            id="romOverlay"
+            style="
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: 100%;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              z-index: 2;
+              background: rgba(17, 17, 17, 0.96);
+            "
+          >
+            <input
+              type="file"
+              id="romLoader"
+              accept=".nes"
+              style="margin-bottom: 10px"
+            />
+            <div
+              id="dropZone"
+              style="
+                padding: 8px 12px;
+                border-radius: 8px;
+                background: #222;
+                border: 1px dashed #333;
+                color: #aaa;
+                text-align: center;
+                margin-bottom: 8px;
+                width: 80%;
+              "
+            >
+              Or drag &amp; drop a <code>.nes</code> file here
+            </div>
+            <div
+              class="muted"
+              style="color: #aaa; font-size: 13px; text-align: center"
+            >
+              (You must legally own the ROM.)
+            </div>
+            <div
+              class="muted"
+              style="
+                color: #aaa;
+                font-size: 13px;
+                text-align: center;
+                margin-top: 10px;
+              "
+            >
+              After selecting a ROM file it should start automatically.<br />
+              If it doesn't, press <strong>Start</strong> (on-screen) or press
+              <code>Enter</code>.<br />
+              If the emulator fails to load, a clear error will be shown below.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: ABXY -->
+        <div id="abxy">
+          <div class="btn" id="btnY" aria-label="Y">Y</div>
+          <div class="btn" id="btnX" aria-label="X">X</div>
+          <div class="btn" id="btnB" aria-label="B">B</div>
+          <div class="btn" id="btnA" aria-label="A">A</div>
+        </div>
+      </div>
+
+      <!-- Bottom controls -->
+      <div id="centerControls">
+        <div class="btn" id="btnStart" aria-label="Start">Start</div>
+        <div class="btn" id="btnSelect" aria-label="Select">Select</div>
+        <div class="btn" id="btnReset" aria-label="Reset">Reset</div>
+      </div>
+
+      <!-- Remove this line from below the play area -->
+      <!-- <p class="muted">After selecting a ROM file it should start automatically. If it doesn't, press <strong>Start</strong> (on-screen) or press <code>Enter</code>. If the emulator fails to load, a clear error will be shown below.</p> -->
+      <!-- Remove the log div from the UI -->
+      <!-- <div id="log"></div> -->
+    </div>
+    <script>
+      (function () {
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const romLoader = document.getElementById("romLoader");
+        const dropZone = document.getElementById("dropZone");
+        const romOverlay = document.getElementById("romOverlay");
+        const statusText = document.getElementById("statusText");
+
+        const controlIds = [
+          "btnUp",
+          "btnLeft",
+          "btnRight",
+          "btnDown",
+          "btnA",
+          "btnB",
+          "btnX",
+          "btnY",
+          "btnStart",
+          "btnSelect",
+          "btnReset",
+        ];
+
+        // Traffic light logic (horizontal, no label)
+        const lightRed = document.getElementById("light-red");
+        const lightYellow = document.getElementById("light-yellow");
+        const lightGreen = document.getElementById("light-green");
+
+        function setTrafficLight(state) {
+          // state: "ready", "running", "error"
+          lightRed.style.background = state === "error" ? "#f00" : "#400";
+          lightYellow.style.background = state === "ready" ? "#ff0" : "#443";
+          lightGreen.style.background = state === "running" ? "#0f0" : "#040";
+        }
+
+        function log(msg) {
+          console.log("[" + new Date().toLocaleTimeString() + "] " + msg);
+        }
+        function error(msg) {
+          log("ERROR: " + msg);
+          setTrafficLight("error");
+          romLoader.disabled = true;
+          // Show overlay with error info
+          romOverlay.style.display = "flex";
+          // Remove previous error message if any
+          let errMsg = document.getElementById("romErrorMsg");
+          if (!errMsg) {
+            errMsg = document.createElement("div");
+            errMsg.id = "romErrorMsg";
+            errMsg.style.color = "#f55";
+            errMsg.style.fontSize = "15px";
+            errMsg.style.fontWeight = "bold";
+            errMsg.style.marginTop = "18px";
+            errMsg.style.textAlign = "center";
+            romOverlay.appendChild(errMsg);
+          }
+          errMsg.textContent =
+            "An error occurred. Refer console log for details.";
+        }
+
+        const SCRIPT_URLS = [
+          "https://unpkg.com/jsnes/dist/jsnes.min.js",
+          "https://cdn.jsdelivr.net/npm/jsnes@0.7.0/dist/jsnes.min.js",
+        ];
+
+        let nes = null,
+          NESClass = null,
+          Controller = null,
+          imageData = null,
+          romLoaded = false,
+          running = false;
+
+        // --- Add audio support ---
+        let audioCtx = null;
+        let audioNode = null;
+        let audioBufferL = [];
+        let audioBufferR = [];
+        const AUDIO_BUFFER_SIZE = 4096;
+
+        // Resume audio context on user gesture (required by browsers)
+        function resumeAudioContextIfNeeded() {
+          if (audioCtx && audioCtx.state === "suspended") {
+            audioCtx.resume();
+          }
+        }
+        window.addEventListener("mousedown", resumeAudioContextIfNeeded);
+        window.addEventListener("touchstart", resumeAudioContextIfNeeded);
+        window.addEventListener("keydown", resumeAudioContextIfNeeded);
+
+        function setupAudio() {
+          if (!window.AudioContext && !window.webkitAudioContext) {
+            log("Web Audio API not supported");
+            return;
+          }
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          audioNode = audioCtx.createScriptProcessor(AUDIO_BUFFER_SIZE, 0, 2);
+          audioNode.onaudioprocess = function (e) {
+            const outL = e.outputBuffer.getChannelData(0);
+            const outR = e.outputBuffer.getChannelData(1);
+            for (let i = 0; i < AUDIO_BUFFER_SIZE; i++) {
+              outL[i] = audioBufferL.length ? audioBufferL.shift() : 0;
+              outR[i] = audioBufferR.length ? audioBufferR.shift() : 0;
+            }
+          };
+          audioNode.connect(audioCtx.destination);
+          log("Audio initialized");
+        }
+        // --- end audio support ---
+
+        // --- Gamepad/Joystick support ---
+        const GAMEPAD_BUTTONS = {
+          12: "BUTTON_UP", // D-pad up
+          13: "BUTTON_DOWN", // D-pad down
+          14: "BUTTON_LEFT", // D-pad left
+          15: "BUTTON_RIGHT", // D-pad right
+          0: "BUTTON_A", // NES A (bottom button)
+          1: "BUTTON_B", // NES B (right button)
+          9: "BUTTON_START", // Start
+          8: "BUTTON_SELECT", // Select
+        };
+        let prevGamepadState = {};
+
+        function pollGamepads() {
+          const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+          const gp = gamepads[0];
+          if (gp && nes && Controller) {
+            for (const btnIdx in GAMEPAD_BUTTONS) {
+              const nesBtn = GAMEPAD_BUTTONS[btnIdx];
+              const pressed = gp.buttons[btnIdx] && gp.buttons[btnIdx].pressed;
+              // Only send buttonDown if not already pressed, and buttonUp if released
+              if (pressed && !prevGamepadState[btnIdx]) {
+                nes.buttonDown(1, Controller[nesBtn]);
+                log("Gamepad: buttonDown " + nesBtn);
+              } else if (!pressed && prevGamepadState[btnIdx]) {
+                nes.buttonUp(1, Controller[nesBtn]);
+                log("Gamepad: buttonUp " + nesBtn);
+              }
+              prevGamepadState[btnIdx] = pressed;
+            }
+            // Also support left stick as D-pad
+            if (gp.axes.length >= 2) {
+              const threshold = 0.5;
+              // Up
+              if (gp.axes[1] < -threshold && !prevGamepadState["axis_up"]) {
+                nes.buttonDown(1, Controller.BUTTON_UP);
+                prevGamepadState["axis_up"] = true;
+                log("Gamepad: axis BUTTON_UP");
+              } else if (
+                gp.axes[1] >= -threshold &&
+                prevGamepadState["axis_up"]
+              ) {
+                nes.buttonUp(1, Controller.BUTTON_UP);
+                prevGamepadState["axis_up"] = false;
+                log("Gamepad: axis BUTTON_UP released");
+              }
+              // Down
+              if (gp.axes[1] > threshold && !prevGamepadState["axis_down"]) {
+                nes.buttonDown(1, Controller.BUTTON_DOWN);
+                prevGamepadState["axis_down"] = true;
+                log("Gamepad: axis BUTTON_DOWN");
+              } else if (
+                gp.axes[1] <= threshold &&
+                prevGamepadState["axis_down"]
+              ) {
+                nes.buttonUp(1, Controller.BUTTON_DOWN);
+                prevGamepadState["axis_down"] = false;
+                log("Gamepad: axis BUTTON_DOWN released");
+              }
+              // Left
+              if (gp.axes[0] < -threshold && !prevGamepadState["axis_left"]) {
+                nes.buttonDown(1, Controller.BUTTON_LEFT);
+                prevGamepadState["axis_left"] = true;
+                log("Gamepad: axis BUTTON_LEFT");
+              } else if (
+                gp.axes[0] >= -threshold &&
+                prevGamepadState["axis_left"]
+              ) {
+                nes.buttonUp(1, Controller.BUTTON_LEFT);
+                prevGamepadState["axis_left"] = false;
+                log("Gamepad: axis BUTTON_LEFT released");
+              }
+              // Right
+              if (gp.axes[0] > threshold && !prevGamepadState["axis_right"]) {
+                nes.buttonDown(1, Controller.BUTTON_RIGHT);
+                prevGamepadState["axis_right"] = true;
+                log("Gamepad: axis BUTTON_RIGHT");
+              } else if (
+                gp.axes[0] <= threshold &&
+                prevGamepadState["axis_right"]
+              ) {
+                nes.buttonUp(1, Controller.BUTTON_RIGHT);
+                prevGamepadState["axis_right"] = false;
+                log("Gamepad: axis BUTTON_RIGHT released");
+              }
+            }
+          }
+          requestAnimationFrame(pollGamepads);
+        }
+
+        // Always start polling, not just on connect
+        pollGamepads();
+
+        window.addEventListener("gamepadconnected", function (e) {
+          log("Gamepad connected: " + (e.gamepad ? e.gamepad.id : "unknown"));
+          prevGamepadState = {};
+        });
+        window.addEventListener("gamepaddisconnected", function (e) {
+          log("Gamepad disconnected");
+          prevGamepadState = {};
+        });
+        // --- end Gamepad/Joystick support ---
+
+        function tryLoadScript(idx) {
+          if (idx >= SCRIPT_URLS.length) {
+            error("Failed to load jsnes");
+            return;
+          }
+          const url = SCRIPT_URLS[idx];
+          const s = document.createElement("script");
+          s.src = url;
+          s.async = true;
+          s.onload = () => {
+            log("Loaded " + url);
+            initEmulatorIfPossible();
+          };
+          s.onerror = () => {
+            log("Failed " + url);
+            tryLoadScript(idx + 1);
+          };
+          document.head.appendChild(s);
+        }
+
+        function initEmulatorIfPossible() {
+          try {
+            NESClass = (window.jsnes && window.jsnes.NES) || window.NES || null;
+            Controller =
+              (window.jsnes && window.jsnes.Controller) ||
+              window.Controller ||
+              null;
+            if (!NESClass || !Controller)
+              throw new Error("NES/Controller not found");
+            setupAudio();
+            nes = new NESClass({
+              onFrame: function (frameBuffer) {
+                if (!imageData) imageData = ctx.createImageData(256, 240);
+                for (let i = 0, j = 0; i < frameBuffer.length; ++i, j += 4) {
+                  const pixel = frameBuffer[i];
+                  imageData.data[j] = pixel & 0xff;
+                  imageData.data[j + 1] = (pixel >> 8) & 0xff;
+                  imageData.data[j + 2] = (pixel >> 16) & 0xff;
+                  imageData.data[j + 3] = 0xff;
+                }
+                ctx.putImageData(imageData, 0, 0);
+              },
+              onAudioSample: function (l, r) {
+                audioBufferL.push(l);
+                audioBufferR.push(r);
+                if (audioCtx && audioCtx.state === "suspended") {
+                  audioCtx.resume();
+                }
+              },
+            });
+            setTrafficLight("ready");
+            log("Emulator initialized.");
+          } catch (err) {
+            error("Init failed: " + err.message);
+          }
+        }
+        tryLoadScript(0);
+
+        function startLoop() {
+          if (running) return;
+          running = true;
+          function step() {
+            if (!running) return;
+            if (romLoaded && nes) {
+              nes.frame();
+            }
+            requestAnimationFrame(step);
+          }
+          requestAnimationFrame(step);
+        }
+
+        // Show overlay
+        function showRomOverlay() {
+          romOverlay.style.display = "flex";
+          ctx.fillStyle = "#111";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // Remove error message if present
+          const errMsg = document.getElementById("romErrorMsg");
+          if (errMsg) errMsg.remove();
+        }
+        // Hide overlay
+        function hideRomOverlay() {
+          romOverlay.style.display = "none";
+        }
+
+        // On load, show overlay
+        showRomOverlay();
+
+        romLoader.addEventListener("change", (e) => {
+          const f = e.target.files[0];
+          if (f) {
+            hideRomOverlay();
+            loadRomFile(f);
+          }
+        });
+        dropZone.addEventListener("dragover", (ev) => {
+          ev.preventDefault();
+        });
+        dropZone.addEventListener("drop", (ev) => {
+          ev.preventDefault();
+          const f = ev.dataTransfer.files[0];
+          if (f) {
+            hideRomOverlay();
+            loadRomFile(f);
+          }
+        });
+
+        function loadRomFile(file) {
+          if (!file.name.toLowerCase().endsWith(".nes")) {
+            error("Select a .nes file");
+            return;
+          }
+          const r = new FileReader();
+          r.onload = function (ev) {
+            try {
+              const arr = new Uint8Array(ev.target.result);
+              log(
+                "ROM header: " +
+                  arr.slice(0, 8).toString() +
+                  ", length: " +
+                  arr.length
+              );
+              if (
+                !(
+                  arr[0] === 0x4e &&
+                  arr[1] === 0x45 &&
+                  arr[2] === 0x53 &&
+                  arr[3] === 0x1a
+                )
+              ) {
+                error("File is not a valid NES ROM (missing NES header)");
+                return;
+              }
+              let romString = "";
+              for (let i = 0; i < arr.length; ++i)
+                romString += String.fromCharCode(arr[i]);
+              nes.loadROM(romString);
+              log("ROM loaded as string");
+              romLoaded = true;
+              setTrafficLight("running");
+              startLoop();
+            } catch (err) {
+              error("ROM load failed: " + err.message);
+            }
+          };
+          r.readAsArrayBuffer(file);
+        }
+
+        // On reset, show overlay and set light to ready
+        controlIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener(
+            "touchstart",
+            (ev) => {
+              ev.preventDefault();
+              press(id);
+            },
+            { passive: false }
+          );
+          el.addEventListener(
+            "touchend",
+            (ev) => {
+              ev.preventDefault();
+              release(id);
+            },
+            { passive: false }
+          );
+          el.addEventListener("mousedown", () => press(id));
+          el.addEventListener("mouseup", () => release(id));
+          function press(id) {
+            if (!nes || !Controller) return;
+            if (id === "btnReset") {
+              showRomOverlay();
+              setTrafficLight("ready");
+              romLoader.value = "";
+              romLoaded = false;
+              running = false;
+              ctx.fillStyle = "#111";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              return;
+            }
+            nes.buttonDown(1, Controller[BUTTON_MAP[id]]);
+          }
+          function release(id) {
+            if (!nes || !Controller) return;
+            if (id === "btnReset") return;
+            nes.buttonUp(1, Controller[BUTTON_MAP[id]]);
+          }
+        });
+
+        // On initial load, set light to loading/ready
+        setTrafficLight("ready");
+
+        const keyBindings = {
+          arrowup: "BUTTON_UP",
+          arrowdown: "BUTTON_DOWN",
+          arrowleft: "BUTTON_LEFT",
+          arrowright: "BUTTON_RIGHT",
+          z: "BUTTON_A",
+          x: "BUTTON_B",
+          enter: "BUTTON_START",
+          shift: "BUTTON_SELECT",
+        };
+        window.addEventListener("keydown", (e) => {
+          const k = e.key.toLowerCase();
+          const m = keyBindings[k];
+          if (m && nes) {
+            nes.buttonDown(1, Controller[m]);
+            e.preventDefault();
+          }
+        });
+        window.addEventListener("keyup", (e) => {
+          const k = e.key.toLowerCase();
+          const m = keyBindings[k];
+          if (m && nes) {
+            nes.buttonUp(1, Controller[m]);
+            e.preventDefault();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
