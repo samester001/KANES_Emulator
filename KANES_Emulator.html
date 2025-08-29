@@ -154,6 +154,22 @@
     <!-- <div id="log"></div> -->
   </div>
   <script>
+    const BUTTON_MAP = {
+  btnUp: "BUTTON_UP",
+  btnDown: "BUTTON_DOWN",
+  btnLeft: "BUTTON_LEFT",
+  btnRight: "BUTTON_RIGHT",
+  btnA: "BUTTON_A",
+  btnB: "BUTTON_B",
+  btnX: "BUTTON_B",   // Optional: map X → same as B (or make turbo)
+  btnY: "BUTTON_A",   // Optional: map Y → same as A (or turbo)
+  btnStart: "BUTTON_START",
+  btnSelect: "BUTTON_SELECT"
+};
+
+
+
+
     (function(){
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
@@ -449,30 +465,41 @@
         el.addEventListener('mousedown',()=>press(id));
         el.addEventListener('mouseup',()=>release(id));
         function press(id){
-          if(!nes||!Controller)return;
-          if(id==='btnReset'){
-            showRomOverlay();
-            setTrafficLight("ready");
-            romLoader.value = "";
-            romLoaded = false;
-            running = false;
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            return;
-          }
-          nes.buttonDown(1,Controller[BUTTON_MAP[id]]);
-        }
+  if(!nes || !Controller) return;
+  if(id === 'btnReset'){
+    showRomOverlay();
+    setTrafficLight("ready");
+    romLoader.value = "";
+    romLoaded = false;
+    running = false;
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+  const mapped = BUTTON_MAP[id];
+  if(mapped) nes.buttonDown(1, Controller[mapped]);
+}
         function release(id){
-          if(!nes||!Controller)return;
-          if(id==='btnReset')return;
-          nes.buttonUp(1,Controller[BUTTON_MAP[id]]);
-        }
+  if(!nes || !Controller) return;
+  if(id === 'btnReset') return;
+  const mapped = BUTTON_MAP[id];
+  if(mapped) nes.buttonUp(1, Controller[mapped]);
+}
       });
 
       // On initial load, set light to loading/ready
       setTrafficLight("ready");
 
-      const keyBindings={'arrowup':'BUTTON_UP','arrowdown':'BUTTON_DOWN','arrowleft':'BUTTON_LEFT','arrowright':'BUTTON_RIGHT','z':'BUTTON_A','x':'BUTTON_B','enter':'BUTTON_START','shift':'BUTTON_SELECT'};
+      const keyBindings = {
+  arrowup: "BUTTON_UP",
+  arrowdown: "BUTTON_DOWN",
+  arrowleft: "BUTTON_LEFT",
+  arrowright: "BUTTON_RIGHT",
+  z: "BUTTON_A",      // A button
+  x: "BUTTON_B",      // B button
+  enter: "BUTTON_START",
+  shift: "BUTTON_SELECT"
+};
       window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();const m=keyBindings[k];if(m&&nes){nes.buttonDown(1,Controller[m]);e.preventDefault();}});
       window.addEventListener('keyup',e=>{const k=e.key.toLowerCase();const m=keyBindings[k];if(m&&nes){nes.buttonUp(1,Controller[m]);e.preventDefault();}});
     })();
